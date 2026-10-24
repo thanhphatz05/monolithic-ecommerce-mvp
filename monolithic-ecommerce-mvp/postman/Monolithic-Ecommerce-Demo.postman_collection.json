@@ -1,0 +1,473 @@
+{
+  "info": {
+    "_postman_id": "97f78974-cf58-42fb-b2a6-b2768b366f3c",
+    "name": "TH2 - Monolithic E-commerce - Demo 8 mục",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Import collection. Chạy 1 Health, tạo X/Y bằng CLI, GET Product trước register/login/order. Sản phẩm pid lấy tự động từ GET Products."
+  },
+  "item": [
+    {
+      "name": "01 - Health check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"200 and DB connected\", ()=>{ pm.response.to.have.status(200); pm.expect(pm.response.json().database).to.eql(\"connected\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Products: lấy pid X/Y",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/products",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "const p = pm.response.json().products;",
+              "const x = p.find(v=>v.pname===\"X\");",
+              "const y = p.find(v=>v.pname===\"Y\");",
+              "if(x && y){pm.collectionVariables.set(\"pidX\",String(x.pid));pm.collectionVariables.set(\"pidY\",String(y.pid));}",
+              "pm.test(\"Có sản phẩm X và Y\",()=>{pm.expect(x).to.exist;pm.expect(y).to.exist;});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Đăng ký: role normal + score 10",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "register"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{username}}\",\n  \"fullname\": \"{{fullname}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Created normal score 10\",()=>{pm.response.to.have.status(201);const u=pm.response.json().user;pm.expect(u.role).to.eql(\"normal\");pm.expect(u.membership.score).to.eql(10);});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Đăng nhập, lấy JWT",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "login"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"username\": \"{{username}}\",\n  \"password\": \"{{password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Đăng nhập có token\",()=>{pm.response.to.have.status(200);pm.expect(pm.response.json().token).to.be.a(\"string\");});",
+              "if(pm.response.code===200){pm.collectionVariables.set(\"token\",pm.response.json().token);}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Không token: 401",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "orders"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"items\": [\n    {\n      \"pid\": 1,\n      \"qty\": 2\n    }\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Chặn không có token\",()=>pm.response.to.have.status(401));"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Đặt mua X=2, Y=5",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "orders"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"items\": [\n    {\"pid\": {{pidX}}, \"qty\": 2},\n    {\"pid\": {{pidY}}, \"qty\": 5}\n  ]\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Tạo order & shipment\",()=>{pm.response.to.have.status(201);const o=pm.response.json().order;pm.expect(o.details).to.have.length(2);pm.expect(o.shipments).to.have.length(1);});",
+              "if(pm.response.code===201){const o=pm.response.json().order;pm.collectionVariables.set(\"oid\",String(o.oid));pm.collectionVariables.set(\"shipid\",String(o.shipments[0].shipid));}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Chi tiết đơn hàng",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders/{{oid}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "orders",
+            "{{oid}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "08 - Danh sách đơn hàng",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/orders",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "orders"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "09 - Chi tiết shipment",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/shipments/{{shipid}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "shipments",
+            "{{shipid}}"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "10 - Danh sách shipment",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/shipments",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "shipments"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "11 - Tài khoản JWT",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/me",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "auth",
+            "me"
+          ]
+        },
+        "auth": {
+          "type": "bearer",
+          "bearer": [
+            {
+              "key": "token",
+              "value": "{{token}}",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "12 - Products: kiểm tra trừ kho",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/products",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "products"
+          ]
+        },
+        "auth": {
+          "type": "noauth"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Có X,Y\",()=>{const p=pm.response.json().products;pm.expect(p.some(x=>x.pname===\"X\")).to.eql(true);pm.expect(p.some(x=>x.pname===\"Y\")).to.eql(true);});"
+            ]
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "username",
+      "value": "phat_demo_001"
+    },
+    {
+      "key": "fullname",
+      "value": "Nguyen Thanh Phat"
+    },
+    {
+      "key": "password",
+      "value": "12345678"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "pidX",
+      "value": "1"
+    },
+    {
+      "key": "pidY",
+      "value": "2"
+    },
+    {
+      "key": "oid",
+      "value": "1"
+    },
+    {
+      "key": "shipid",
+      "value": "1"
+    }
+  ]
+}
